@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Mono&display=swap" rel="stylesheet">
+    <title>Technical Documentation Page</title>
+</head>
+<body>
+    <div class="content">
+        <nav id="navbar">
+            <header class="title-nav">Django Migrations
+            </header>
+            <ul id="title-nav">
+                <li class="category"><a href="#The_Commands" class="nav-link">The Commands</a></li>
+                <li class="category"><a href="#Backend_Support" class="nav-link">Backend Support</a></li>
+               <li class="category"><a href="#MySQL" class="nav-link">MySQL</a></li>
+               <li class="category"><a href="#SQLite" class="nav-link">SQLite</a></li>
+                <li class="category"><a href="#Workflow" class="nav-link">Workflow</a></li>
+                <li class="category"><a href="#Transactions" class="nav-link">Transactions</a></li>
+                <li class="category"><a href="#Dependencies" class="nav-link">Dependencies</a></li>
+                <li class="category"><a href="#Migration_files" class="nav-link">Migration files</a></li>
+                <li class="category"><a href="#Model_Managers" class="nav-link">Model Managers</a></li>
+                <li class="category"><a href="#Initial_migrations" class="nav-link">Initial migrations</a></li>
+                <li class="category"><a href="#History_consistency" class="nav-link">History consistency</a></li>
+                <li class="category"><a href="#Adding_migrations_to_apps" class="nav-link">Adding Migrations to apps</a></li>
+                <li class="category"><a href="#Reversing_migrations" class="nav-link">Reversing migrations</a></li>
+                <li class="category"><a href="#Historical_models" class="nav-link">Historical models</a></li>
+                <li class="category"><a href="#Considerations_when_removing_model_fields" class="nav-link">Considerations when removing model fields</a></li>
+                <li class="category"><a href="#Data_Migrations" class="nav-link">Data Migrations</a></li>
+                <li class="category"><a href="#Squashing_migrations" class="nav-link">Squashing migrations</a></li>
+                <li class="category"><a href="#Serializing_values" class="nav-link">Serializing values</a></li>
+                <li class="category"><a href="#Adding_a_deconstruct()_method" class="nav-link">Adding a deconstruct() method</a></li>
+                <li class="category"><a href="#Supporting_multiple_Django_versions" class="nav-link">Supporting multiple Django versions</a></li>
+
+            </ul>
+        </nav> 
+        <main id="main-doc">
+            <section class="main-section" id="The_Commands">
+                <header  class="title-category">The Commands</header>
+                <p class="contento">There are several commands which you will use to interact with migrations and Django’s handling of database schema:</p>
+                <ul>
+                    <li>
+                        migrate, which is responsible for applying and unapplying migrations.
+                    </li>
+                    <li>makemigrations, which is responsible for creating new migrations based on the changes you have made to your models.</li>
+                    <li>sqlmigrate, which displays the SQL statements for a migration.</li>
+                    <li>showmigrations, which lists a project’s migrations and their status.</li>
+                </ul>
+                <p class="contento">You should think of migrations as a version control system for your database schema. makemigrations is responsible for packaging up your model changes into individual migration files - analogous to commits - and migrate is responsible for applying those to your database.</p>
+                <br>
+                <p class="contento">The migration files for each app live in a “migrations” directory inside of that app, and are designed to be committed to, and distributed as part of, its codebase. You should be making them once on your development machine and then running the same migrations on your colleagues’ machines, your staging machines, and eventually your production machines.</p>
+                <div class="box-green">
+                    <h2 class="contento">Note</h2>
+                    <p class="contento">It is possible to override the name of the package which contains the migrations on a per-app basis by modifying the MIGRATION_MODULES setting.</p>
+                </div>
+                <p class="contento">Migrations will run the same way on the same dataset and produce consistent results, meaning that what you see in development and staging is, under the same circumstances, exactly what will happen in production.</p>
+                <p class="contento">Django will make migrations for any change to your models or fields - even options that don’t affect the database - as the only way it can reconstruct a field correctly is to have all the changes in the history, and you might need those options in some data migrations later on (for example, if you’ve set custom validators).</p>
+            </section>
+            <hr>
+            <br>
+            <section id="Backend_Support" class="main-section">
+                <header class="title-category">Backend Support</header>
+                <p class="contento">Migrations are supported on all backends that Django ships with, as well as any third-party backends if they have programmed in support for schema alteration (done via the SchemaEditor class).</p>
+                <p class="contento">However, some databases are more capable than others when it comes to schema migrations; some of the caveats are covered below.</p>
+                <header class="title-category space-text">PostgreSQL</header>
+                <p class="contento ">PostgreSQL is the most capable of all the databases here in terms of schema support.</p>
+                
+            </section>
+            <hr>
+            <br>
+            <section class="main-section" id="MySQL">
+                <header class="title-category">MySQL</header>
+                <p class="contento">MySQL lacks support for transactions around schema alteration operations, meaning that if a migration fails to apply you will have to manually unpick the changes in order to try again (it’s impossible to roll back to an earlier point).</p>
+                <p class="contento">In addition, MySQL will fully rewrite tables for almost every schema operation and generally takes a time proportional to the number of rows in the table to add or remove columns. On slower hardware this can be worse than a minute per million rows - adding a few columns to a table with just a few million rows could lock your site up for over ten minutes.</p>
+                <p class="contento">Finally, MySQL has relatively small limits on name lengths for columns, tables and indexes, as well as a limit on the combined size of all columns an index covers. This means that indexes that are possible on other backends will fail to be created under MySQL.</p>
+                <div><p class="content-gray"></p></div>
+            </section>
+            <hr>
+            <br>
+            <section class="main-section" id="SQLite">
+                <header class="title-category">SQLite</header>
+                <p class="contento">LSQLite has very little built-in schema alteration support, and so Django attempts to emulate it by:</p>
+                <ul>
+                    <li>Creating a new table with the new schema</li>
+                    <li>Copying the data across</li>
+                    <li>Dropping the old table</li>
+                    <li>Renaming the new table to match the original name</li>
+                </ul>
+                <p class="contento">This process generally works well, but it can be slow and occasionally buggy. It is not recommended that you run and migrate SQLite in a production environment unless you are very aware of the risks and its limitations; the support Django ships with is designed to allow developers to use SQLite on their local machines to develop less complex Django projects without the need for a full database.</p>
+                
+            </section>
+            <hr>
+            <br>
+            <section id="Workflow" class="main-section">
+                <header class="title-category">Workflow</header>
+                <p class="contento">Django can create migrations for you. Make changes to your models - say, add a field and remove a model - and then run makemigrations:</p>
+                <div class="content-grey"><pre ><span></span><code>$ python manage.py makemigrations
+    Migrations for 'books':
+        books/migrations/0003_auto.py:
+          - Alter field author on book</code></pre></div>
+                <p class="contento">Your models will be scanned and compared to the versions currently contained in your migration files, and then a new set of migrations will be written out. Make sure to read the output to see what makemigrations thinks you have changed - it’s not perfect, and for complex changes it might not be detecting what you expect.</p>
+                <p class="contento">Once you have your new migration files, you should apply them to your database to make sure they work as expected:</p>
+                
+                <div class="content-grey">
+                    <pre><span></span>$ python manage.py migrate
+    Operations to perform:
+    Apply all migrations: books
+        Running migrations:
+    Rendering model states... DONE
+    Applying books.0003_auto... OK
+                    </pre>
+                </div>
+                <p class="contento">Once the migration is applied, commit the migration and the models change to your version control system as a single commit - that way, when other developers (or your production servers) check out the code, they’ll get both the changes to your models and the accompanying migration at the same time.</p>
+                <p class="contento">If you want to give the migration(s) a meaningful name instead of a generated one, you can use the makemigrations --name option:</p>
+                <div class="content-grey">
+                    <pre><span></span>$ python manage.py makemigrations --name changed_my_model your_app_label</pre>
+                </div>
+                <br>
+                
+                <header class="title-category">Version control</header>
+                <p class="contento">Because migrations are stored in version control, you’ll occasionally come across situations where you and another developer have both committed a migration to the same app at the same time, resulting in two migrations with the same number.</p>
+                <p class="contento">Don’t worry - the numbers are just there for developers’ reference, Django just cares that each migration has a different name. Migrations specify which other migrations they depend on - including earlier migrations in the same app - in the file, so it’s possible to detect when there’s two new migrations for the same app that aren’t ordered.</p>
+                <p class="contento">When this happens, Django will prompt you and give you some options. If it thinks it’s safe enough, it will offer to automatically linearize the two migrations for you. If not, you’ll have to go in and modify the migrations yourself - don’t worry, this isn’t difficult, and is explained more in Migration files below.</p>
+            </section>
+            <hr>
+            <br>
+            <section id="Transactions" class="main-section">
+                <header class="title-category">Transactions</header>
+                <p class="contento">On databases that support DDL transactions (SQLite and PostgreSQL), all migration operations will run inside a single transaction by default. In contrast, if a database doesn’t support DDL transactions (e.g. MySQL, Oracle) then all operations will run without a transaction.</p>
+                <p class="contento">You can prevent a migration from running in a transaction by setting the atomic attribute to False. For example:</p>
+                <div class="content-grey"><pre><span></span><span class="rc">from django.db import</span> migrations
+<span class="rc">class</span><span class="oc"> Migration</span>(migrations<span class="rc">.</span>Migration):
+    atomic <span class="rc">=</span> <span class="lbc">False</span></pre></div>
+                <p class="contento">It’s also possible to execute parts of the migration inside a transaction using atomic() or by passing atomic=True to RunPython. See Non-atomic migrations for more details.</p>
+
+            </section>
+            <hr>
+            <br>
+            <section id="Dependencies" class="main-section">
+                <header class="title-category">Dependencies</header>
+                <p class="contento">While migrations are per-app, the tables and relationships implied by your models are too complex to be created for one app at a time. When you make a migration that requires something else to run - for example, you add a ForeignKey in your books app to your authors app - the resulting migration will contain a dependency on a migration in authors.</p>
+                <p class="contento">This means that when you run the migrations, the authors migration runs first and creates the table the ForeignKey references, and then the migration that makes the ForeignKey column runs afterward and creates the constraint. If this didn’t happen, the migration would try to create the ForeignKey column without the table it’s referencing existing and your database would throw an error.</p>
+                <p class="contento">This dependency behavior affects most migration operations where you restrict to a single app. Restricting to a single app (either in makemigrations or migrate) is a best-efforts promise, and not a guarantee; any other apps that need to be used to get dependencies correct will be.</p>
+                <p class="contento">Apps without migrations must not have relations (ForeignKey, ManyToManyField, etc.) to apps with migrations. Sometimes it may work, but it’s not supported.
+
+                </p>
+                <div><p class="content-gray"></p></div>
+            </section>
+            <hr>
+            <br>
+            <section id="Migration_files" class="main-section">
+                <header class="title-category">Migration files</header>
+                <p class="contento">Migrations are stored as an on-disk format, referred to here as “migration files”. These files are actually normal Python files with an agreed-upon object layout, written in a declarative style.</p>
+                <p class="contento">A basic migration file looks like this:</p>
+                <div class="content-grey">
+                    <pre><span></span><span class="rc">from django.db import</span> migrations, models
+
+<span class="rc">class</span> <span class="oc">Migration</span>(migrations<span class="rc">.</span>Migration):
+                        
+  dependencies <span class="rc">=</span> [(<span class="lbc">'migrations'</span>, <span class="lbc">'0001_initial'</span>)]
+                        
+  operations <span class="rc">=</span>[
+    migrations<span class="rc">.</span>DeleteModel(<span class="lbc">'Tribble'</span>),
+    migrations<span class="rc">.</span>AddField(<span class="lbc">'Author'</span>, <span class="lbc">'rating'</span>, models<span class="rc">.</span>IntegerField(default<span class="rc">.</span><span class="lbc">0</span> )),]
+                    </pre>
+                </div>
+                <p class="contento">What Django looks for when it loads a migration file (as a Python module) is a subclass of django.db.migrations.Migration called Migration. It then inspects this object for four attributes, only two of which are used most of the time:</p>
+                <ul>
+                    <li>dependencies, a list of migrations this one depends on.</li>
+                    <li>operations, a list of Operation classes that define what this migration does.</li>
+                </ul>
+                <p class="contento">The operations are the key; they are a set of declarative instructions which tell Django what schema changes need to be made. Django scans them and builds an in-memory representation of all of the schema changes to all apps, and uses this to generate the SQL which makes the schema changes.</p>
+                <p class="contento">That in-memory structure is also used to work out what the differences are between your models and the current state of your migrations; Django runs through all the changes, in order, on an in-memory set of models to come up with the state of your models last time you ran makemigrations. It then uses these models to compare against the ones in your models.py files to work out what you have changed.</p>
+                <p class="contento">You should rarely, if ever, need to edit migration files by hand, but it’s entirely possible to write them manually if you need to. Some of the more complex operations are not autodetectable and are only available via a hand-written migration, so don’t be scared about editing them if you have to.</p>
+                <header class="title-category">Custom fields</header>
+                <p class="contento">You can’t modify the number of positional arguments in an already migrated custom field without raising a TypeError. The old migration will call the modified __init__ method with the old signature. So if you need a new argument, please create a keyword argument and add something like assert 'argument_name' in kwargs in the constructor.</p>
+            </section>
+            <hr>
+            <br>
+            <section  class="main-section" id="Model_Managers">
+                <header class="title-category">Model Managers</header>
+                <p class="contento">You can optionally serialize managers into migrations and have them available in RunPython operations. This is done by defining a use_in_migrations attribute on the manager class</p>
+                <div class="content-grey">
+                    <pre><span></span><span class="rc">class</span><span class="oc"> MyManager</span>(models<span class="rc">.</span> Manager):
+    use_in_migrations <span class="rc">=</span> <span class="lbc">True</span>
+                    
+<span class="rc">class</span> <span class="oc">MyModel</span>(models<span class="rc">.</span>Model):
+    objects <span class="rc">=</span> MyManager()
+                    </pre>
+                </div>
+                <p class="contento">If you are using the from_queryset() function to dynamically generate a manager class, you need to inherit from the generated class to make it importable:</p>
+                <div class="content-grey">
+                    <pre><span></span><span class="rc">class</span> <span class="oc">MyManager</span>(MyBaseManager<span class="rc">.</span>from_queryset(CustomQuerySet)):
+    use_in_migrations <span class="rc">=</span> <span class="lbc">True</span>
+                    
+<span class="rc">class</span> <span class="oc">MyModel</span>(models<span class="rc">.</span>Model):
+    objects <span class="rc">=</span> MyManager()
+                    </pre>
+                </div>
+                <p class="contento">Please refer to the notes about Historical models in migrations to see the implications that come along.</p>                
+            </section>
+            <hr>
+            <br>
+            <section class="main-section" id="Initial_migrations">
+                <header class="title-category">Initial migrations</header>
+                    <h3 class="subtitle">Migration.initial</h3>
+                    <p class="contento">The “initial migrations” for an app are the migrations that create the first version of that app’s tables. Usually an app will have one initial migration, but in some cases of complex model interdependencies it may have two or more.</p>
+                    <p class="contento">Initial migrations are marked with an initial = True class attribute on the migration class. If an initial class attribute isn’t found, a migration will be considered “initial” if it is the first migration in the app (i.e. if it has no dependencies on any other migration in the same app).</p>
+                    <p class="contento">When the migrate --fake-initial option is used, these initial migrations are treated specially. For an initial migration that creates one or more tables (CreateModel operation), Django checks that all of those tables already exist in the database and fake-applies the migration if so. Similarly, for an initial migration that adds one or more fields (AddField operation), Django checks that all of the respective columns already exist in the database and fake-applies the migration if so. Without --fake-initial, initial migrations are treated no differently from any other migration.</p>
+            </section>
+            <hr>
+            <br>
+            <section class="main-section" id="History_consistency">
+                <header class="title-category">History consistency</header>
+                <p class="contento">As previously discussed, you may need to linearize migrations manually when two development branches are joined. While editing migration dependencies, you can inadvertently create an inconsistent history state where a migration has been applied but some of its dependencies haven’t. This is a strong indication that the dependencies are incorrect, so Django will refuse to run migrations or make new migrations until it’s fixed. When using multiple databases, you can use the allow_migrate() method of database routers to control which databases makemigrations checks for consistent history.</p>
+            </section>
+            <hr>
+            <br>
+            <section class="main-section" id="Adding_migrations_to_apps">
+                <header class="title-category">Adding migrations to apps</header>
+                <p class="contento">New apps come preconfigured to accept migrations, and so you can add migrations by running makemigrations once you’ve made some changes.</p>
+                <p class="contento">If your app already has models and database tables, and doesn’t have migrations yet (for example, you created it against a previous Django version), you’ll need to convert it to use migrations by running:</p>
+                <div class="content-grey">
+                    <pre><span></span>$ python manage.py makemigrations your_app_label
+                    </pre>
+                </div>
+                <p class="contento">This will make a new initial migration for your app. Now, run python manage.py migrate --fake-initial, and Django will detect that you have an initial migration and that the tables it wants to create already exist, and will mark the migration as already applied. (Without the migrate --fake-initial flag, the command would error out because the tables it wants to create already exist.)</p>
+                <p class="contento">Note that this only works given two things:</p>
+                <ul>
+                    <li>You have not changed your models since you made their tables. For migrations to work, you must make the initial migration first and then make changes, as Django compares changes against migration files, not the database.</li>
+                    <li>You have not manually edited your database - Django won’t be able to detect that your database doesn’t match your models, you’ll just get errors when migrations try to modify those tables.</li>
+                </ul>
+            </section>
+            <hr>
+            <br>
+            <section id="Reversing_migrations" class="main-section">
+                <header class="title-category">Reversing migrations</header>
+                <p class="contento">Migrations can be reversed with migrate by passing the number of the previous migration. For example, to reverse migration books.0003</p>
+                <br>
+                <div class="content-grey">
+                    <pre><span></span><code>$ python manage.py migrate books <span class="lbc">0002</span><span class="gc">
+Operations to perform:
+  Target specific migration: 0002_auto, from books
+Running migrations:
+   Rendering model states... DONE
+   Unapplying books.0003_auto... OK</span></code></pre>
+                </div>
+                <p class="contento">If you want to reverse all migrations applied for an app, use the name zero:</p>
+                <br>
+                <div class="content-grey">
+                    <pre><span></span><code>$ python manage.py migrate books zero <span class="gc">
+Operations to perform:
+  Unapply all migrations: books
+Running migrations:
+  Rendering model states... DONE
+  Unapplying books.0002_auto... OK
+  Unapplying books.0001_initial... OK</span></code></pre>
+                </div>
+                <p class="contento">If you want to reverse all migrations applied for an app, use the name zero:</p>
+                <br>
+                <div class="content-grey">
+                    <pre><span></span><code>$ python manage.py migrate books <span class="lbc">0002</span><span class="gc">
+Operations to perform:
+  Target specific migration: 0002_auto, from books
+Running migrations:
+   Rendering model states... DONE
+   Unapplying books.0003_auto...Traceback (most recent call last):
+django.db.migrations.exceptions.IrreversibleError: Operation &lt;RunSQL  sql='DROP TABLE demo_books'&gt; 
+in books.0003_auto is not reversible</span></code></pre>
+                </div>
+            </section>
+            <section id="Historical_models" class="main-section">
+                <header class="title-category">Historical models</header>
+                <p class="contento">When you run migrations, Django is working from historical versions of your models stored in the migration files. If you write Python code using the RunPython operation, or if you have allow_migrate methods on your database routers, you need to use these historical model versions rather than importing them directly.</p>
+                <div class="content-grey not"><pre><span></span>
+<strong>Warning</strong>
+
+If you import models directly rather than using the historical 
+models, your migrations may work initially but will fail in 
+the future when you try to rerun old migrations (commonly, 
+when you set up a new installation and run through all the 
+migrations to set up the database).
+                    
+This means that historical model problems may not be immediately 
+obvious. If you run into this kind of failure, it’s OK to edit 
+the migration to use the historical models rather than direct 
+imports and commit those changes.
+                </pre></div>
+                <p class="contento">Because it’s impossible to serialize arbitrary Python code, these historical models will not have any custom methods that you have defined. They will, however, have the same fields, relationships, managers (limited to those with use_in_migrations = True) and Meta options (also versioned, so they may be different from your current ones).</p>
+                <div class="content-grey not"><pre><span></span>
+<strong>Warning</strong>
+                    
+This means that you will NOT have custom save() methods called on 
+objects when you access them in migrations, and you will NOT have 
+any custom constructors or instance methods. Plan appropriately!
+                                    </pre></div>
+                <p class="contento">References to functions in field options such as upload_to and limit_choices_to and model manager declarations with managers having use_in_migrations = True are serialized in migrations, so the functions and classes will need to be kept around for as long as there is a migration referencing them. Any custom model fields will also need to be kept, since these are imported directly by migrations.</p>
+                <p class="contento">In addition, the concrete base classes of the model are stored as pointers, so you must always keep base classes around for as long as there is a migration that contains a reference to them. On the plus side, methods and managers from these base classes inherit normally, so if you absolutely need access to these you can opt to move them into a superclass.</p>
+                <p class="contento">To remove old references, you can squash migrations or, if there aren’t many references, copy them into the migration files.</p>
+            </section>
+            <hr>
+            <br>
+            <section id="Considerations_when_removing_model_fields" class="main-section">
+                <header class="title-category">Considerations when removing model fields</header>
+                <p class="contento">Similar to the “references to historical functions” considerations described in the previous section, removing custom model fields from your project or third-party app will cause a problem if they are referenced in old migrations.</p>
+                <p class="contento">To help with this situation, Django provides some model field attributes to assist with model field deprecation using the system checks framework.</p>
+                <p class="contento">Add the system_check_deprecated_details attribute to your model field similar to the following:</p>
+                <div class="content-grey">
+                    <pre><span></span><code>
+<span class="rc">class</span><span class="oc">IPAddressField</span>(Field):
+    system_check_deprecated_details = {
+         <span class="lbc">'msg'</span>: (
+            <span class="lbc">'IPAddressField has been deprecated. Support for it (except '
+            'in historical migrations) will be removed in Django 1.9.'</span>
+         ),
+         <span class="lbc">'hint': 'Use GenericIPAddressField instead.',<span class="cg"> # optional</span>
+         'id': 'fields.W900'</span>,  <span class="gc"># pick a unique ID for your field.</span>
+    }
+                    </pre>
+                </div>
+                <p class="contento">After a deprecation period of your choosing (two or three feature releases for fields in Django itself), change the system_check_deprecated_details attribute to system_check_removed_details and update the dictionary similar to:</p>
+                <div class="content-grey">
+                    <pre><span></span>
+<span class="rc">class </span><span class="oc">IPAddressField</span>(Field):
+    system_check_removed_details<span class="rc"> = </span>{
+        <span class="lbc">'msg': (
+             'IPAddressField has been removed except for support in '
+             'historical migrations.'</span>
+         ),
+         <span class="lbc">'hint': 'Use GenericIPAddressField instead.',
+         'id': 'fields.E900'</span>, <span class="gc"># pick a unique ID for your field.</span>
+     }
+    </code></pre>
+                </div>
+                <p class="contento">You should keep the field’s methods that are required for it to operate in database migrations such as __init__(), deconstruct(), and get_internal_type(). Keep this stub field for as long as any migrations which reference the field exist. For example, after squashing migrations and removing the old ones, you should be able to remove the field completely.</p>
+            </section>
+            <hr>
+            <br>
+            <section id="Data_Migrations"class="main-section">
+                <header class="title-category">Data Migrations</header>
+                <p class="contento">As well as changing the database schema, you can also use migrations to change the data in the database itself, in conjunction with the schema if you want.</p>
+                <p class="contento">Migrations that alter data are usually called “data migrations”; they’re best written as separate migrations, sitting alongside your schema migrations.</p>
+                <p class="contento">Django can’t automatically generate data migrations for you, as it does with schema migrations, but it’s not very hard to write them. Migration files in Django are made up of Operations, and the main operation you use for data migrations is RunPython.</p>
+                <p class="contento">To start, make an empty migration file you can work from (Django will put the file in the right place, suggest a name, and add dependencies for you):</p>
+                <div class="content-grey">
+                    <pre><span></span>python manage<span class="rc">.</span>py makemigrations <span class="rc">--</span>empty yourappname</pre>
+                </div>
+                <p class="contento">Then, open up the file; it should look something like this:</p>
+                <div class="content-grey">
+                    <pre><span></span><code><span class="gc"># Generated by Django A.B on YYYY-MM-DD HH:MM</span>
+<span class="rc">from django.db import</span> migrations
+<span class="rc">class</span> <span class="oc">Migration</span>(migrations<span class="rc">.</span>Migration):
+    dependencies <span class="rc">=</span> [
+        (<span class="lbc">'yourappname', '0001_initial'</span>
+
+    )]
+
+    operations <span class="rc">=</span>[
+    ]
+</code></pre>
+                </div>
+                <p class="contento">Now, all you need to do is create a new function and have RunPython use it. RunPython expects a callable as its argument which takes two arguments - the first is an app registry that has the historical versions of all your models loaded into it to match where in your history the migration sits, and the second is a SchemaEditor, which you can use to manually effect database schema changes (but beware, doing this can confuse the migration autodetector!)</p>
+                <p class="contento">Let’s write a migration that populates our new name field with the combined values of first_name and last_name (we’ve come to our senses and realized that not everyone has first and last names). All we need to do is use the historical model and iterate over the rows:</p>
+                <div class="content-grey">
+                    <pre><span></span><span class="rc">from django.db import</span>migrations
+<span class="rc">def</span> <span class="pc">combine_names</span>(apps, schema_editor):
+    <span class="gc"># We can't import the Person model directly as it may be a newer
+    # version than this migration expects. We use the historical version.</span>
+    Person <span class="rc">=</span> apps<span class="rc">.</span>get_model(<span class="lbc">'yourappname', 'Person'</span>) 
+    <span class="rc">for</span> person <span class="rc">in</span> Person<span class="rc">.</span>ojbects<span class="rc">.</span>all():
+        person<span class="rc">.</span>name <span class="rc">=</span> <span class="lbc">'%s %s'</span> <span class="rc">%</span> (person<span class="rc">.</span>first_name, person<span class="rc">.</span>last_name)
+        person<span class="rc">.</span>save()
+
+<span class="rc">class</span> <span class="oc">Migration</span>(migrations.Migration)
+
+        dependencies <span class="rc">=</span> [
+            (<span class="lbc">'yourappname','0001_initial'</span>),
+        ]
+
+        operations <span class="rc">=</span> [
+            migrations<span class="rc">.</span>RunPython(combine_names),
+        ]
+                    </pre>
+                </div>
+                <p class="contento">Once that’s done, we can run python manage.py migrate as normal and the data migration will run in place alongside other migrations.</p>
+                <p class="contento">You can pass a second callable to RunPython to run whatever logic you want executed when migrating backwards. If this callable is omitted, migrating backwards will raise an exception.</p>
+                <br>
+                <header class="title-category">Accessing models from other apps</header>
+                <p class="contento">When writing a RunPython function that uses models from apps other than the one in which the migration is located, the migration’s dependencies attribute should include the latest migration of each app that is involved, otherwise you may get an error similar to: LookupError: No installed app with label 'myappname' when you try to retrieve the model in the RunPython function using apps.get_model().</p>
+                <p class="contento">In the following example, we have a migration in app1 which needs to use models in app2. We aren’t concerned with the details of move_m1 other than the fact it will need to access models from both apps. Therefore we’ve added a dependency that specifies the last migration of app2:</p>
+
+                <div class="content-grey">
+                    <pre><span></span><span class="rc">class</span> <span class="oc">Migration</span>(migrations<span class="rc">.</span>Migration):
+    depedencies <span class="rc">=</span> [
+        (<span class="lbc">'app1'</span>,<span class="lbc"> '0001_initial'</span>)
+                        <span class="gc"># added dependency to enable using models from app2 in move_m1</span>
+        (<span class="lbc">'app2'</span>,<span class="lbc"> '0004_foobar'</span>)
+     ]
+
+    operations <span class="rc">=</span> [
+        migrations<span class="rc">.</span>RunPython(move_m1),
+        ]
+                    </pre>
+                </div>
+                <hr>
+                <br>
+                <header class="title-category">More advanced migrations</header>
+                <p class="contento">If you’re interested in the more advanced migration operations, or want to be able to write your own, see the migration operations reference and the “how-to” on writing migrations.</p>
+            </section>
+            <hr>
+            <br>
+            <section id="Squashing_migrations" class="main-section" >
+                <header class="title-category">Squashing migrations</header>
+                <p class="contento">You are encouraged to make migrations freely and not worry about how many you have; the migration code is optimized to deal with hundreds at a time without much slowdown. However, eventually you will want to move back from having several hundred migrations to just a few, and that’s where squashing comes in.</p>
+                <p class="contento">Squashing is the act of reducing an existing set of many migrations down to one (or sometimes a few) migrations which still represent the same changes.</p>
+                <p class="contento">Django does this by taking all of your existing migrations, extracting their Operations and putting them all in sequence, and then running an optimizer over them to try and reduce the length of the list - for example, it knows that CreateModel and DeleteModel cancel each other out, and it knows that AddField can be rolled into CreateModel.</p>
+                <p class="contento">Once the operation sequence has been reduced as much as possible - the amount possible depends on how closely intertwined your models are and if you have any RunSQL or RunPython operations (which can’t be optimized through unless they are marked as elidable) - Django will then write it back out into a new set of migration files.</p>
+                <p class="contento">These files are marked to say they replace the previously-squashed migrations, so they can coexist with the old migration files, and Django will intelligently switch between them depending where you are in the history. If you’re still part-way through the set of migrations that you squashed, it will keep using them until it hits the end and then switch to the squashed history, while new installs will use the new squashed migration and skip all the old ones.</p>
+                <p class="contento">This enables you to squash and not mess up systems currently in production that aren’t fully up-to-date yet. The recommended process is to squash, keeping the old files, commit and release, wait until all systems are upgraded with the new release (or if you’re a third-party project, ensure your users upgrade releases in order without skipping any), and then remove the old files, commit and do a second release.
+
+                </p>
+                <p class="contento">The command that backs all this is squashmigrations - pass it the app label and migration name you want to squash up to, and it’ll get to work:</p>
+                <div class="content-grey">
+                    <pre><span></span>$ ./manage.py squashmigrations myapp 0004
+Will squash the following migrations:
+ - 0001_initial
+ - 0002_some_change
+ - 0003_another_change
+ - 0004_undo_something
+Do you wish to proceed? [yN] y
+Optimizing...
+   Optimized from 12 operations to 7 operations.
+Created new squashed migration /home/andrew/Programs/DjangoTest/test/migrations/0001_squashed_0004_undo_something.py
+  You should commit this migration but leave the old ones in place;
+  the new migration will be used for new installs. Once you are sure
+  all instances of the codebase have applied the migrations you squashed,
+ you can delete them.
+                    </pre>
+                </div>
+                <p class="contento">Use the squashmigrations --squashed-name option if you want to set the name of the squashed migration rather than use an autogenerated one.</p>
+                <p class="contento">Note that model interdependencies in Django can get very complex, and squashing may result in migrations that do not run; either mis-optimized (in which case you can try again with --no-optimize, though you should also report an issue), or with a CircularDependencyError, in which case you can manually resolve it.</p>
+                <p class="contento">To manually resolve a CircularDependencyError, break out one of the ForeignKeys in the circular dependency loop into a separate migration, and move the dependency on the other app with it. If you’re unsure, see how makemigrations deals with the problem when asked to create brand new migrations from your models. In a future release of Django, squashmigrations will be updated to attempt to resolve these errors itself.</p>
+                <p class="contento">Once you’ve squashed your migration, you should then commit it alongside the migrations it replaces and distribute this change to all running instances of your application, making sure that they run migrate to store the change in their database.</p>
+                <p class="contento">You must then transition the squashed migration to a normal migration by:</p>
+                <ul>
+                    <li>Deleting all the migration files it replaces.</li>
+                    <li>Updating all migrations that depend on the deleted migrations to depend on the squashed migration instead.</li>
+                    <li>Removing the replaces attribute in the Migration class of the squashed migration (this is how Django tells that it is a squashed migration).</li>
+                </ul>
+
+                <div class="box-green">
+                    <h2>Note</h2>
+                    <p>Once you’ve squashed a migration, you should not then re-squash that squashed migration until you have fully transitioned it to a normal migration.</p>
+                </div>
+
+                <div class="box-green">
+                    <h2>Pruning references to deleted migrations</h2>
+                    <div class="box-green little">New in Django 4.1.</div>
+                    <p>If it is likely that you may reuse the name of a deleted migration in the future, you should remove references to it from Django’s migrations table with the migrate --prune option.</p>
+                </div>
+            </section>
+            <hr>
+            <br>
+            <section id="Serializing_values" class="main-section">
+                <header class="title-category">Serializing values</header>
+                <p class="contento">Migrations are Python files containing the old definitions of your models - thus, to write them, Django must take the current state of your models and serialize them out into a file.</p>
+                <p class="contento">While Django can serialize most things, there are some things that we just can’t serialize out into a valid Python representation - there’s no Python standard for how a value can be turned back into code (repr() only works for basic values, and doesn’t specify import paths).</p>
+                <p class="contento">Django can serialize the following:</p>
+
+                <ul>
+                    <li>int, float, bool, str, bytes, None, NoneType</li>
+                    <li>list, set, tuple, dict, range.</li>
+                    <li>datetime.date, datetime.time, and datetime.datetime instances (include those that are timezone-aware)</li>
+                    <li>decimal.Decimal instances</li>
+                    <li>enum.Enum instances</li>
+                    <li>uuid.UUID instances</li>
+                    <li>functools.partial() and functools.partialmethod instances which have serializable func, args, and keywords values.</li>
+                    <li>Pure and concrete path objects from pathlib. Concrete paths are converted to their pure path equivalent, e.g. pathlib.PosixPath to pathlib.PurePosixPath.</li>
+                    <li>os.PathLike instances, e.g. os.DirEntry, which are converted to str or bytes using os.fspath().</li>
+                    <li>LazyObject instances which wrap a serializable value.</li>
+                    <li>Enumeration types (e.g. TextChoices or IntegerChoices) instances.</li>
+                    <li>Any Django field</li>
+                    <li>Any function or method reference (e.g. datetime.datetime.today) (must be in module’s top-level scope)</li>
+                    <li>Unbound methods used from within the class body</li>
+                    <li>Any class reference (must be in module’s top-level scope)</li>
+                    <li>Anything with a custom deconstruct() method (see below)</li>
+                </ul>
+                <p class="contento">
+                    Django cannot serialize:
+                </p>
+                <ul>
+                    <li>Nested classes</li>
+                    <li>Arbitrary class instances (e.g. MyClass(4.3, 5.7))</li>
+                    <li>Lambdas</li>
+                </ul>
+                <br>
+                <header class="title-category">Custom serializers</header>
+                <p class="contento">You can serialize other types by writing a custom serializer. For example, if Django didn’t serialize Decimal by default, you could do this:</p>
+<div class="content-grey"><pre><span></span><span class="rc">from decimal import</span> Decimal
+<span class="rc">from django.db.migrations.serializer import</span> BaseSerializer
+<span class="rc">from django.db.migrations.writer import </span>MigrationWriter
+<span class="rc">class</span> <span class="oc">DeciamlSerializer</span>(BaseSerializer):
+    <span class="rc">def</span> <span class="pc">serialize</span> <span class="gc">(self):</span> 
+        <span class="rc">return</span><span class="gc"> repr(self</span><span class="rc">.</span>value), { <span class="blc">'from decimal import Decimal'</span>}
+MigrationWriter<span class="rc">.</span>register_serializer(Decimal, DecimalSerializer)
+                </pre>
+                </div>
+                <p class="contento">The first argument of MigrationWriter.register_serializer() is a type or iterable of types that should use the serializer.</p>
+                <p class="contento">The serialize() method of your serializer must return a string of how the value should appear in migrations and a set of any imports that are needed in the migration.</p>
+            </section>
+            <hr>
+            <br>
+            <section class="main-section" id="Adding_a_deconstruct()_method">
+                <header class="title-category">Adding a deconstruct() method</header>
+                <p class="contento">You can let Django serialize your own custom class instances by giving the class a deconstruct() method. It takes no arguments, and should return a tuple of three things (path, args, kwargs):</p>
+                <ul>
+                    <li>path should be the Python path to the class, with the class name included as the last part (for example, myapp.custom_things.MyClass). If your class is not available at the top level of a module it is not serializable.</li>
+                    <li>args should be a list of positional arguments to pass to your class’ __init__ method. Everything in this list should itself be serializable.</li>
+                    <li>kwargs should be a dict of keyword arguments to pass to your class’ __init__ method. Every value should itself be serializable.</li>
+                </ul>
+    
+                <div class="box-green">
+                    <h2>Note</h2>
+                    <p>This return value is different from the deconstruct() method for custom fields which returns a tuple of four items.</p>
+                </div>
+                <p class="contento">Django will write out the value as an instantiation of your class with the given arguments, similar to the way it writes out references to Django fields.</p>
+                <p class="contento">To prevent a new migration from being created each time makemigrations is run, you should also add a __eq__() method to the decorated class. This function will be called by Django’s migration framework to detect changes between states.</p>
+                <p class="contento">As long as all of the arguments to your class’ constructor are themselves serializable, you can use the @deconstructible class decorator from django.utils.deconstruct to add the deconstruct() method:</p>
+                <div class="content-grey">
+                    <pre><span></span><span class="rc">from django.utils.deconstruct import</span> deconstructible
+<span class="pc">@deconstructible</span>
+<span class="rc">class</span> <span class="oc">MyCustomClass</span>:
+    <span class="rc">def</span> <span class="pc">__init__</span>(<span class="gc">self</span>, foo<span class="rc">=</span> <span class="lbc">1</span>):
+        <span class="gc">self</span><span class="rc">.</span>foo <span class="rc">=</span> foo
+        <span class="rc">...</span>
+    <span class="rc">def</span> <span class="pc">__eq__</span>(<span class="gc">self</span>, other):
+        <span class="rc">return </span><span class="gc">self</span><span class="rc">.</span>foo <span class="rc">==</span> other<span class="rc">.</span>foo
+                    </pre>
+                </div>
+                <p class="contento">The decorator adds logic to capture and preserve the arguments on their way into your constructor, and then returns those arguments exactly when deconstruct() is called.</p>
+            </section>
+            <section id="Supporting_multiple_Django_versions" class="main-section">
+                <header class="title-category">Supporting multiple Django versions</header>
+                <p class="contento">If you are the maintainer of a third-party app with models, you may need to ship migrations that support multiple Django versions. In this case, you should always run makemigrations with the lowest Django version you wish to support.</p>
+                <p class="contento">The migrations system will maintain backwards-compatibility according to the same policy as the rest of Django, so migration files generated on Django X.Y should run unchanged on Django X.Y+1. The migrations system does not promise forwards-compatibility, however. New features may be added, and migration files generated with newer versions of Django may not work on older versions.</p>
+    
+                <div class="box-green">
+                    <h2>See also</h2>
+                    <p>The Migrations Operations Reference</p>
+                    <p>Covers the schema operations API, special operations, and writing your own operations.</p>
+                    <br>
+                    <p>The Writing Migrations “how-to”</p>
+                    <p>Explains how to structure and write database migrations for different scenarios you might encounter.</p>
+                </div>
+            </section>
+            <hr>
+            <br>
+        </main>
+        <hr>
+        <br>
+
+    </div>
+</body>
+</html>
